@@ -7,12 +7,56 @@ const { Product, Category, Tag, ProductTag } = require('../../models');
 router.get('/', (req, res) => {
   // find all products
   // be sure to include its associated Category and Tag data
+  Product.findAll(
+    {
+      attributes: ['id', 'product_name', 'price', 'stock'],
+      include: [
+        {
+          model: Category,
+          as: 'category'
+        },
+        {
+          model: Tag,
+          through: ProductTag,
+          as: 'tag'
+        }
+      ]
+    }
+  )
+    .then(dbProductData => res.json(dbProductData))
+    .catch(err => {
+      console.log(err);
+      res.status(500).json(err);
+    });
 });
 
 // get one product
-router.get('/:id', (req, res) => {
-  // find a single product by its `id`
-  // be sure to include its associated Category and Tag data
+router.get('/:id', async (req, res) => {
+  try {
+    const productData = await Product.findByPk(req.params.id, {
+      include: [{ model: Product }, { model: ProductTag }],
+      attributes: {
+        include: [
+          [
+            // Use plain SQL to (ASK ABOUT WHAT IS NEEDED HERE)
+            sequelize.literal(
+              '(SELECT SUM(product) FROM productTag WHERE car.driver_id = driver.id)'
+            ),
+            'totalMileage',
+          ],
+        ],
+      },
+    });
+
+    if (!productData) {
+      res.status(404).json({ message: 'No product found with that id!' });
+      return;
+    }
+
+    res.status(200).json(driverData);
+  } catch (err) {
+    res.status(500).json(err);
+  }
 });
 
 // create new product
@@ -25,6 +69,34 @@ router.post('/', (req, res) => {
       tagIds: [1, 2, 3, 4]
     }
   */
+ Product.create(req.body)
+   .then((product) => {
+     // if there's product tags, we need to create pairings to enable the many-to-many relationship
+     if (req.body.tagIds) {
+       const productTagIdArr = req.body.tagIds.map((tag_id) => {
+         return { product_id: product.id, tag_id: tag_id };
+       })
+       return Tag.bulkCreate(productTagIdArr);
+     }
+     else {
+       res.send('You did not provide any tag IDs!');
+     }
+   })
+   .then((productTagIds) => {
+     // match up the id of the product to the ones from the seed data so it can be located in the join table
+     const productTagObjects = productTagIds.map((productTagId) => ({
+       product_id: Product.id,
+       tag_id: productTagId.id
+     }));
+     return productTagIds.insertMany(productTagObjects);
+   })
+   .then(() => {
+     console.log(`Created product`);
+     res.send({ message: 'Product created!' });
+   }).catch((err) => {
+     console.log(err);
+     res.status(400).json({ error: err });
+   });
   Product.create(req.body)
     .then((product) => {
       // if there's product tags, we need to create pairings to bulk create in the ProductTag model
@@ -93,7 +165,19 @@ router.put('/:id', (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-  // delete one product by its `id` value
+  // Delete one product by its `id` value
+  Product.destroy({
+    where: {
+      id: req.params.id
+    }
+  })
+  .then(() => {
+    res.json({ message: 'Successfully deleted product' });
+  })
+  .catch((err) => {
+    console.error(err);
+    res.status(500).json(err);
+  });
 });
 
 module.exports = router;
