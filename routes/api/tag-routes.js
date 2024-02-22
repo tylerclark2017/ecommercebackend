@@ -68,27 +68,7 @@ router.put('/:id', (req, res) => {
   })
     .then((updatedTag) => {
       // find all associated tags from the product_tag table
-      return Tag.findAll({ where: { id: req.params.id } });
-    })
-    .then(([tag]) => {
-      // get the product ids from the request body
-      const productTags = req.body.productIds;
-      const tagProducts = tag.getProductTags();
-
-      // figure out which ones to remove and add
-      const productsToRemove = tagProducts.filter((ptag) => !productTags.includes(ptag.productId));
-      const productsToAdd = productTags.filter((ptag) => !tagProducts.includes(ptag));
-
-      // send back the updated tag
-      res.status(200).json(tag);
-
-      // run afterServers for each of the products being removed
-      Sync.afterServer('delete', 'products', productsToRemove.map((ptag) => ptag.productId))
-        .then(() => {
-          // now that the products have been updated, update the tag's product association
-          Tag.addProducts(tag.id, productsToAdd);
-          Tag.removeProducts(tag.id, productsToRemove.map((ptag) => ptag.id));
-        });
+      res.status(200).json(updatedTag);
     })
     .catch((err) => {
       console.log(err);
