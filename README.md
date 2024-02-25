@@ -12,4 +12,4 @@
 
  Here is a link to my GitHub repository for this Challenge: https://github.com/tylerclark2017/ecommercebackend
 
- I ran out of free Screencastify videos, so using Loom, here is the link to my video walkthrough: 
+ I ran out of free Screencastify videos, so using Loom, here is the link to my video walkthrough: https://www.loom.com/share/9724699eaf5744258966cf0f9ab05bb7
